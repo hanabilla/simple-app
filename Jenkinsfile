@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = 'hanabillaa/simple-app'
-        REGISTRY_CREDENTIALS = ''
+        REGISTRY_CREDENTIALS = 'dockerhub-credentials'
     }
 
     stages {
@@ -15,23 +15,23 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'echo "Build di Linux"'
+                bat 'echo "Build di Windows"'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $IMAGE_NAME:$BUILD_NUMBER .'
+                bat "docker build -t %IMAGE_NAME%:%BUILD_NUMBER% ."
             }
         }
 
         stage('Push Docker Image') {
             steps {
                 withCredentials([usernamePassword(credentialsId: REGISTRY_CREDENTIALS, usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-                    sh 'echo $PASS | docker login -u $USER --password-stdin'
-                    sh 'docker push $IMAGE_NAME:$BUILD_NUMBER'
-                    sh 'docker tag $IMAGE_NAME:$BUILD_NUMBER $IMAGE_NAME:latest'
-                    sh 'docker push $IMAGE_NAME:latest'
+                    bat 'docker login -u %USER% -p %PASS%'
+                    bat "docker push %IMAGE_NAME%:%BUILD_NUMBER%"
+                    bat "docker tag %IMAGE_NAME%:%BUILD_NUMBER% %IMAGE_NAME%:latest"
+                    bat "docker push %IMAGE_NAME%:latest"
                 }
             }
         }
