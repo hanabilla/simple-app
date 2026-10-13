@@ -1,49 +1,39 @@
 pipeline {
     agent any
+
     environment {
-        IMAGE_NAME = 'abdieeuh/simple-app'
-        REGISTRY = 'https://index.docker.io/v1/'
-        REGISTRY_CREDENTIALS = 'dockerhub-credentials'
-        PATH = "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-        DOCKER_HOST = "unix:///var/run/docker.sock"
+        IMAGE_NAME = 'hanabillaa/simple-app'
+        REGISTRY_CREDENTIALS = ''
     }
+
     stages {
         stage('Checkout') {
             steps {
-                echo 'Melakukan checkout dari SCM...'
                 checkout scm
             }
         }
+
         stage('Build') {
             steps {
-                echo 'Mulai build aplikasi'
-                sh 'echo "Build selesai ✅"'
+                sh 'echo "Build di Linux"'
             }
         }
+
         stage('Build Docker Image') {
             steps {
-                script {
-                    echo 'Membangun Docker image...'
-                    docker.build("${IMAGE_NAME}:${env.BUILD_NUMBER}")
-                    echo "Image berhasil dibuat: ${IMAGE_NAME}:${env.BUILD_NUMBER}"
-                }
+                sh 'docker build -t $IMAGE_NAME:$BUILD_NUMBER .'
             }
         }
+
         stage('Push Docker Image') {
             steps {
-                script {
-                    echo 'Push image ke Docker Hub...'
-                    docker.withRegistry(REGISTRY, REGISTRY_CREDENTIALS) {
-                        docker.image("${IMAGE_NAME}:${env.BUILD_NUMBER}").push()
-                        docker.image("${IMAGE_NAME}:${env.BUILD_NUMBER}").push('latest')
-                    }
+                withCredentials([usernamePassword(credentialsId: REGISTRY_CREDENTIALS, usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    sh 'echo $PASS | docker login -u $USER --password-stdin'
+                    sh 'docker push $IMAGE_NAME:$BUILD_NUMBER'
+                    sh 'docker tag $IMAGE_NAME:$BUILD_NUMBER $IMAGE_NAME:latest'
+                    sh 'docker push $IMAGE_NAME:latest'
                 }
             }
-        }
-    }
-    post {
-        always {
-            echo 'Selesai build 🏁OYYY'
         }
     }
 }
