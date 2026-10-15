@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = 'hanabillaa/simple-app'
+        REGISTRY = 'https://index.docker.io/v1/'
         REGISTRY_CREDENTIALS = 'dockerhub-credentials'
     }
 
@@ -11,26 +12,23 @@ pipeline {
             steps { checkout scm }
         }
         stage('Build') {
-            steps { bat 'echo "Build di Windows"' }
+            steps { sh 'echo "Mulai build aplikasi"' }
         }
         stage('Build Docker Image') {
-            steps { bat "docker build -t %IMAGE_NAME%:%BUILD_NUMBER% ." }
+            steps { script { docker.build("${IMAGE_NAME}:${env.BUILD_NUMBER}") } }
         }
         stage('Push Docker Image') {
             steps {
-                withCredentials([usernamePassword(credentialsId: REGISTRY_CREDENTIALS, usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-                    bat 'echo %PASS%| docker login -u %USER% --password-stdin'
-                    bat "docker push %IMAGE_NAME%:%BUILD_NUMBER%"
-                    bat "docker tag %IMAGE_NAME%:%BUILD_NUMBER% %IMAGE_NAME%:latest"
-                    bat "docker push %IMAGE_NAME%:latest"
+                script {
+                    docker.withRegistry(REGISTRY, REGISTRY_CREDENTIALS) {
+                        def tag = "${IMAGE_NAME}:${env.BUILD_NUMBER}"
+                        docker.image(tag).push()
+                        docker.image(tag).push('latest')
+                    }
                 }
             }
         }
     }
 
-    post {
-        always {
-            echo 'Selesai build'
-        }
-    }
+    post { always { echo 'Selesai build' } }
 }
