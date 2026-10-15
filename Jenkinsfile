@@ -2,39 +2,35 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME     = 'simple-flask-app'
-        CONTAINER_NAME = 'simple-flask-app'
+        IMAGE_NAME = 'hanabillaa/simple-app'
+        REGISTRY_CREDENTIALS = 'dockerhub-credentials'
     }
 
     stages {
         stage('Checkout') {
+            steps { checkout scm }
+        }
+        stage('Build') {
+            steps { bat 'echo "Build di Windows"' }
+        }
+        stage('Build Docker Image') {
+            steps { bat "docker build -t %IMAGE_NAME%:%BUILD_NUMBER% ." }
+        }
+        stage('Push Docker Image') {
             steps {
-                checkout scm
+                withCredentials([usernamePassword(credentialsId: REGISTRY_CREDENTIALS, usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    bat 'echo %PASS%| docker login -u %USER% --password-stdin'
+                    bat "docker push %IMAGE_NAME%:%BUILD_NUMBER%"
+                    bat "docker tag %IMAGE_NAME%:%BUILD_NUMBER% %IMAGE_NAME%:latest"
+                    bat "docker push %IMAGE_NAME%:latest"
+                }
             }
         }
+    }
 
-        stage('Build Image') {
-            steps {
-                sh 'docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} -t ${IMAGE_NAME}:latest .'
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                sh '''
-                    docker rm -f ${CONTAINER_NAME} || true
-                    docker run -d --name ${CONTAINER_NAME} -p 5000:5000 ${IMAGE_NAME}:latest
-                '''
-            }
-        }
-
-        stage('Smoke Test') {
-            steps {
-                sh '''
-                    sleep 5
-                    docker exec ${CONTAINER_NAME} python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:5000').read().decode())"
-                '''
-            }
+    post {
+        always {
+            echo 'Selesai build'
         }
     }
 }
